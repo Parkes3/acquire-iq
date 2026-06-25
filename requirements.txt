@@ -1,0 +1,8 @@
+anthropic 
+bertopic 
+langdetect
+google-play-scraper
+streamlit
+scikit-learn
+matplotlib
+seaborn
