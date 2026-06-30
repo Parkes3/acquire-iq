@@ -75,6 +75,7 @@ def get_competitor_metadata(app_id: str, competitor_ids: list[str]) -> pd.DataFr
         result = get_app_metadata(cid)
         row = parse_metadata(result)
         row["AppId"] = cid
+        row['MainApp'] = (cid == app_id)
         rows.append(row)
     df = pd.DataFrame(rows).sort_values("NumInstalls", ascending=False)
     return df

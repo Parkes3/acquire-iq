@@ -74,7 +74,7 @@ def title_lemma_and_plural(title: str) -> list[str]:
                                            'languages', 'lessons']
     """
     parts = re.split(r"[:\-]", title, maxsplit=1)
-    app_name = parts[0].strip().lower()
+    app_name = parts[0].strip().lower().split()
     words = tokenize(parts[1]) if len(parts) > 1 else []
 
     variants = []
@@ -84,7 +84,7 @@ def title_lemma_and_plural(title: str) -> list[str]:
         else:
             variants.append(word + "s")  # language -> languages
 
-    return [app_name] + words + variants
+    return list(app_name) + words + variants
 
 
 def build_stopwords(result: dict) -> list[str]:

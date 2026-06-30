@@ -16,7 +16,7 @@ from sentence_transformers import SentenceTransformer
 import anthropic
 
 from pipeline.config import EMBEDDING_MODEL_NAME, THEMES
-from pipeline.scrape import get_app_metadata, get_reviews, get_competitor_ids
+from pipeline.scrape import get_app_metadata, get_reviews, get_competitor_ids, parse_metadata
 from pipeline.preprocess import filter_language, filter_reviews, to_text_list, build_stopwords
 from pipeline.model import run_topic_model
 from pipeline.themes import build_topic_table
@@ -123,6 +123,10 @@ def analyse_app(
     theme_table.to_parquet(f"{output_dir}/{safe_id}_themes.parquet")
     review_df_out.to_parquet(f"{output_dir}/{safe_id}_reviews.parquet")
 
+    metadata_df = pd.DataFrame([parse_metadata(metadata)])
+    metadata_df["app_id"] = app_id
+    metadata_df.to_parquet(f"{output_dir}/{safe_id}_metadata.parquet")
+
     # Save topic model separately (can't parquet a BERTopic object)
     # With this:
     topic_model.save(
@@ -166,6 +170,8 @@ def run_competitor_analysis(
     if verbose:
         print(f"Main app: {app_id}")
         print(f"Competitors: {competitor_ids}")
+
+    #save list of competitor names?
 
     all_results = {}
     for aid in [app_id] + competitor_ids:

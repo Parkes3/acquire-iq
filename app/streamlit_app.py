@@ -44,6 +44,7 @@ st.set_page_config(
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "outputs")
 PARETO_CUTOFF = 0.8
 
+#TODO: change to get_available_apps func
 PREBUILT_APPS = {
     "Duolingo":  "com.duolingo",
     "Calm":      "com.calm.android",

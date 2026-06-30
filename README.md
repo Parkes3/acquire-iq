@@ -20,6 +20,7 @@ acquireiq/
 │   └── outputs/        # parquet files written here by pipeline.py
 ├── notebooks/
 │   └── development.ipynb  # exploratory notebook showing pipeline development
+├── run_pipeline.py
 └── requirements.txt
 ```
 
