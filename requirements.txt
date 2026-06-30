@@ -13,3 +13,4 @@ sentence-transformers
 streamlit
 umap-learn
 spacy
+safetensors
