@@ -1,0 +1,59 @@
+[
+  {
+    "main_app_id": "com.duolingo",
+    "app_ids": [
+      "com.duolingo",
+      "com.lingodeer",
+      "com.busuu.android.enc",
+      "com.babbel.mobile.android.en",
+      "com.memrise.android.memrisecompanion"
+    ]
+  },
+  {
+    "main_app_id": "com.strava",
+    "app_ids": [
+      "com.strava",
+      "com.nike.plusgps",
+      "com.runtastic.android",
+      "com.alltrails.alltrails",
+      "com.recoverathletics",
+      "com.google.android.apps.fitness",
+      "com.mapmyrun.android2"
+    ]
+  },
+  {
+    "main_app_id": "com.tinder",
+    "app_ids": [
+      "com.tinder",
+      "com.bumble.app",
+      "co.hinge.app",
+      "com.pof.android",
+      "com.badoo.mobile",
+      "com.okcupid.okcupid"
+    ]
+  },
+  {
+    "main_app_id": "com.bpmhealth.boostcamp",
+    "app_ids": [
+      "com.bpmhealth.boostcamp",
+      "com.hevy",
+      "musclebooster.workout.home.gym.abs.loseweight",
+      "com.nike.ntc",
+      "com.lyfta",
+      "io.strongapp.strong",
+      "com.fitbod.fitbod"
+    ]
+  },
+  {
+    "main_app_id": "com.meetup",
+    "app_ids": [
+      "com.meetup",
+      "com.tinder",
+      "com.bumble.app",
+      "com.reddit.frontpage",
+      "com.ftw_and_co.happn",
+      "com.google.android.apps.tachyon",
+      "com.takimi.android"
+    ]
+  }
+]

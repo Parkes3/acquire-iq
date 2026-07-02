@@ -13,6 +13,7 @@ Run with:
 import os
 import sys
 import glob
+import json
 import time
 import pandas as pd
 import streamlit as st
@@ -20,12 +21,15 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import seaborn as sns
 from matplotlib.lines import Line2D
+from PIL import Image
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Path setup — so pipeline modules are importable from app/
 # ---------------------------------------------------------------------------
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pipeline"))
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pipeline"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # ---------------------------------------------------------------------------
 # Page config — must be first Streamlit call
@@ -33,7 +37,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pipeline"))
 
 st.set_page_config(
     page_title="AcquireIQ",
-    page_icon="📊",
+    #page_icon="📒",
+    page_icon=Image.open(Path(__file__).parent / 'static'/ 'aIQ_icon.ico'),
     layout="wide",
 )
 
@@ -45,13 +50,14 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "outputs")
 PARETO_CUTOFF = 0.8
 
 #TODO: change to get_available_apps func
-PREBUILT_APPS = {
-    "Duolingo":  "com.duolingo",
-    "Calm":      "com.calm.android",
-    "Boostcamp": "com.boostcamp.app",
-    "Tinder":    "com.tinder",
-    "Strava":    "com.strava",
-}
+# DONE
+# PREBUILT_APPS = {
+#     "Duolingo":  "com.duolingo",
+#     "Calm":      "com.calm.android",
+#     "Boostcamp": "com.boostcamp.app",
+#     "Tinder":    "com.tinder",
+#     "Strava":    "com.strava",
+# }
 
 THEME_COLOURS = {
     "Monetization":    "#E74C3C",
@@ -59,7 +65,7 @@ THEME_COLOURS = {
     "Content Quality":  "#3498DB",
     "User Experience":  "#9B59B6",
     "Feature Requests": "#1ABC9C",
-    "Account Issues":   "#F39C12",
+    "Account Issues":   "#F72CC4",
 }
 
 # ---------------------------------------------------------------------------
@@ -68,10 +74,6 @@ THEME_COLOURS = {
 
 def safe_id(app_id: str) -> str:
     return app_id.replace(".", "_")
-
-
-def outputs_exist(app_id: str) -> bool:
-    return os.path.exists(f"{OUTPUT_DIR}/{safe_id(app_id)}_topics.parquet")
 
 
 @st.cache_data
@@ -84,16 +86,50 @@ def load_app_data(app_id: str) -> dict:
         "review_df":    pd.read_parquet(f"{OUTPUT_DIR}/{sid}_reviews.parquet"),
     }
 
+@st.cache_data
+def load_groups(output_dir: str) -> list[dict]:
+    groups_path = f"{output_dir}/groups.json"
+    if not os.path.exists(groups_path):
+        return []
+    with open(groups_path) as f:
+        return json.load(f)
 
-def get_custom_app_ids() -> list[str]:
-    """Return app IDs that exist in outputs but aren't in PREBUILT_APPS."""
-    files = glob.glob(f"{OUTPUT_DIR}/*_topics.parquet")
-    all_ids = set(
-        os.path.basename(f).replace("_topics.parquet", "").replace("_", ".")
-        for f in files
-    )
-    prebuilt_ids = set(PREBUILT_APPS.values())
-    return sorted(all_ids - prebuilt_ids)
+@st.cache_data
+def get_apps_in_group(main_app_id: str, output_dir: str) -> pd.DataFrame:
+    """Load metadata for all apps in a named group."""
+    groups = load_groups(output_dir)
+    group = next((g for g in groups if g["main_app_id"] == main_app_id), None)
+    if group is None:
+        return pd.DataFrame()
+
+    rows = []
+    for app_id in group["app_ids"]:
+        sid = app_id.replace(".", "_")
+        meta_path = f"{output_dir}/{sid}_metadata.parquet"
+        if os.path.exists(meta_path):
+            meta = pd.read_parquet(meta_path).iloc[0]
+            rows.append({
+                "app_id": app_id,
+                "Title": meta.get("Title", app_id),
+                "NumInstalls": int(meta.get("NumInstalls", 0)),
+                "Score": float(meta.get("Score", 0)),
+                "AdSupported": meta.get("AdSupported", False),
+                'DateReleased': meta.get('DateReleased', ''),
+                'NumReviews':meta.get('NumReviews', 0),
+                "is_main": app_id == group["main_app_id"],
+            })
+        else:
+            rows.append({
+                "app_id": app_id,
+                "Title": app_id,
+                "NumInstalls": 0,
+                "Score": 0,
+                "AdSupported": None,
+                "is_main": app_id == group["main_app_id"],
+            })
+
+    return pd.DataFrame(rows).sort_values("NumInstalls", ascending=False).reset_index(drop=True)
+
 
 
 # ---------------------------------------------------------------------------
@@ -279,84 +315,68 @@ with st.sidebar:
     st.caption("App review topic explorer")
     st.markdown("---")
 
-    # --- Prebuilt apps ---
-    st.subheader("Prebuilt apps")
-    st.caption("Results load instantly.")
+    groups = load_groups(OUTPUT_DIR)
+    active_group = None
+    group_apps = pd.DataFrame()
+    active_app_id = None
+    app_choice = "- select -"
+    if groups:
+        st.subheader("Select main app")
+        st.caption("Apps you have run the pipeline on.")
 
-    available_prebuilt = {
-        name: aid
-        for name, aid in PREBUILT_APPS.items()
-        if outputs_exist(aid)
-    }
-    missing_prebuilt = {
-        name: aid
-        for name, aid in PREBUILT_APPS.items()
-        if not outputs_exist(aid)
-    }
+        # Build title → main_app_id mapping
+        main_app_options = []
+        for g in groups:
+            sid = g["main_app_id"].replace(".", "_")
+            meta_path = f"{OUTPUT_DIR}/{sid}_metadata.parquet"
+            if os.path.exists(meta_path):
+                meta = pd.read_parquet(meta_path).iloc[0]
+                title = meta.get("Title", g["main_app_id"])
+            else:
+                title = g["main_app_id"]
+            main_app_options.append((title, g["main_app_id"]))
 
-    if available_prebuilt:
-        prebuilt_choice = st.selectbox(
-            "Select an app",
-            options=["— select —"] + list(available_prebuilt.keys()),
-            key="prebuilt_select",
+        selected_title = st.selectbox(
+            "Main app",
+            options=["— select —"] + [t[0] for t in main_app_options]
         )
-    else:
-        st.info("No prebuilt results found. Run the pipeline to generate them.")
-        prebuilt_choice = "— select —"
 
-    if missing_prebuilt:
-        with st.expander("Not yet generated"):
-            for name in missing_prebuilt:
-                st.caption(f"• {name}")
+        if selected_title != "— select —":
+            selected_main_app_id = next(
+                aid for title, aid in main_app_options if title == selected_title
+            )
+            active_group = next(
+                g for g in groups if g["main_app_id"] == selected_main_app_id
+            )
+            group_apps = get_apps_in_group(selected_main_app_id, OUTPUT_DIR)
+
+            st.markdown("---")
+            st.subheader("View app detail")
+            st.caption("Select any app in this group to explore its topics and reviews.")
+
+            app_choice = st.selectbox(
+                "App",
+                options=["— select —"] + group_apps["Title"].tolist()
+            )
+            if app_choice != "— select —":
+                active_app_id = group_apps.loc[
+                    group_apps["Title"] == app_choice, "app_id"
+                ].values[0]
+
+    else:
+        st.info("No groups found. Run the pipeline with --competitors first.")
 
     st.markdown("---")
-
-    # --- Custom app ---
-    st.subheader("Custom app")
-    st.caption(
-        "Enter a Google Play app ID (e.g. `com.spotify.music`). "
-        "The pipeline will run — **this takes 5+ minutes**."
-    )
-
-    custom_input = st.text_input(
-        "App ID",
-        placeholder="com.example.app",
-        key="custom_input",
-    )
-
-    # Show previously run custom apps if any exist
-    custom_done = get_custom_app_ids()
-    if custom_done:
-        st.caption("Previously run custom apps:")
-        custom_choice = st.selectbox(
-            "Load custom result",
-            options=["— select —"] + custom_done,
-            key="custom_select",
-        )
-    else:
-        custom_choice = "— select —"
-
+    st.subheader("Add a new app")
+    st.caption("Enter a Google Play app ID. Running takes **5+ minutes**.")
+    custom_input = st.text_input("App ID", placeholder="com.example.app")
     run_button = st.button(
         "▶ Run pipeline",
         disabled=not custom_input.strip(),
         use_container_width=True,
     )
 
-    st.markdown("---")
 
-# ---------------------------------------------------------------------------
-# Resolve which app is active
-# ---------------------------------------------------------------------------
-
-# Determine active app_id from sidebar state
-active_app_id = None
-
-if prebuilt_choice != "— select —":
-    active_app_id = available_prebuilt[prebuilt_choice]
-elif custom_choice != "— select —":
-    active_app_id = custom_choice
-
-# ---------------------------------------------------------------------------
 # Pipeline execution (custom app)
 # ---------------------------------------------------------------------------
 
@@ -386,21 +406,29 @@ if run_button and custom_input.strip():
 # Main dashboard
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Main dashboard
+# ---------------------------------------------------------------------------
+
 if active_app_id is None:
     with main_area:
         st.title("AcquireIQ")
         st.markdown(
-            "Select a **prebuilt app** from the sidebar to explore results instantly, "
+            "Select a **competitor group** and **app** from the sidebar to explore results, "
             "or enter a **custom app ID** to run the full analysis pipeline."
         )
         st.markdown("---")
 
         col1, col2 = st.columns(2)
         with col1:
-            st.subheader("Prebuilt apps")
-            for name, aid in PREBUILT_APPS.items():
-                icon = "✅" if outputs_exist(aid) else "⏳"
-                st.caption(f"{icon} {name} (`{aid}`)")
+            st.subheader("Available groups")
+            groups = load_groups(OUTPUT_DIR)
+            if groups:
+                for g in groups:
+                    n_apps = len(g["app_ids"])
+                    st.caption(f"**{g['main_app_id']}** — {n_apps} apps")
+            else:
+                st.caption("No groups found. Run the pipeline with --competitors first.")
         with col2:
             st.subheader("How it works")
             st.markdown(
@@ -413,7 +441,6 @@ if active_app_id is None:
                 """
             )
     st.stop()
-
 # Load data for the active app
 try:
     data = load_app_data(active_app_id)
@@ -426,10 +453,9 @@ theme_table  = data["theme_table"]
 review_df    = data["review_df"]
 
 # App name for display
-app_display_name = next(
-    (name for name, aid in PREBUILT_APPS.items() if aid == active_app_id),
-    active_app_id,
-)
+app_display_name = group_apps.loc[
+    group_apps['app_id'] == active_app_id, "Title"
+    ].values[0] if active_app_id else active_app_id
 
 st.title(f"📊 {app_display_name}")
 st.caption(f"`{active_app_id}`")
@@ -438,7 +464,7 @@ st.caption(f"`{active_app_id}`")
 # Tabs
 # ---------------------------------------------------------------------------
 
-tab1, tab2, tab3 = st.tabs(["Overview", "Topic Detail", "Review Explorer"])
+tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Topic Detail", "Review Explorer", 'Competitor View'])
 
 # ---------------------------------------------------------------------------
 # Tab 1 — Overview
@@ -487,12 +513,14 @@ with tab2:
         "total signal is captured by the topics to its left."
     )
 
-    cutoff_pct = st.slider(
+    cutoff_pct_int = st.slider(
         "Cumulative cutoff",
-        min_value=0.5, max_value=1.0,
-        value=PARETO_CUTOFF, step=0.05,
-        format="%.0f%%",
+        min_value=50, max_value=100,
+        value=int(PARETO_CUTOFF * 100), step=1,
+        format="%d%%",
     )
+
+    cutoff_pct = cutoff_pct_int / 100
 
     fig = plot_pareto(topic_table, cutoff_pct)
     if fig:
@@ -571,3 +599,115 @@ with tab3:
         .reset_index(drop=True),
         use_container_width=True,
     )
+
+with tab4:
+    st.subheader("Competitor comparison")
+
+    if active_group is None or group_apps.empty:
+        st.info("Select a competitor group from the sidebar.")
+        st.stop()
+
+    if len(group_apps) < 2:
+        st.info("Only one app in this group. Run with --competitors to add more.")
+        st.stop()
+
+    # --- Installs ---
+    st.subheader("Installs")
+    fig, ax = plt.subplots(figsize=(8, 4))
+    colours = [
+        "#E74C3C" if row["is_main"] else "#95A5A6"
+        for _, row in group_apps.iterrows()
+    ]
+    bars = ax.barh(group_apps["Title"], group_apps["NumInstalls"], color=colours)
+    ax.set_xlabel("Installs")
+    ax.xaxis.set_major_formatter(
+        plt.FuncFormatter(
+            lambda x, _: f"{x/1e6:.0f}M" if x >= 1e6 else f"{x/1e3:.0f}K"
+        )
+    )
+    ax.bar_label(
+        bars,
+        labels=[
+            f"{r/1e6:.1f}M" if r >= 1e6 else f"{r/1e3:.0f}K"
+            for r in group_apps["NumInstalls"]
+        ],
+        padding=3, fontsize=9,
+    )
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    st.markdown("---")
+
+    # --- Theme breakdown ---
+    st.subheader("Theme breakdown")
+    st.caption("Share of negative reviews per theme across the competitor group.")
+
+    theme_rows = []
+    for _, app_row in group_apps.iterrows():
+        sid = app_row["app_id"].replace(".", "_")
+        theme_path = f"{OUTPUT_DIR}/{sid}_themes.parquet"
+        if not os.path.exists(theme_path):
+            continue
+        tdf = pd.read_parquet(theme_path).reset_index()
+        tdf["App"] = app_row["Title"]
+        theme_rows.append(tdf)
+
+    if not theme_rows:
+        st.info("No theme data found for this group yet.")
+    else:
+        all_themes = pd.concat(theme_rows, ignore_index=True)
+        pivot = all_themes.pivot_table(
+            index="App", columns="Theme",
+            values="percentReviews", fill_value=0
+        )
+
+        # Main app first
+        main_title = group_apps.loc[group_apps["is_main"], "Title"].values[0]
+        other_titles = [t for t in pivot.index if t != main_title]
+        if main_title in pivot.index:
+            pivot = pivot.loc[[main_title] + other_titles]
+
+        fig2, ax2 = plt.subplots(figsize=(10, 5))
+        pivot.plot(
+            kind="bar", stacked=False, ax=ax2,
+            color=[THEME_COLOURS.get(c, "#95A5A6") for c in pivot.columns],
+            width=0.75,
+        )
+        ax2.set_ylabel("% of negative reviews")
+        ax2.set_xlabel("")
+        ax2.yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))
+        ax2.set_ylim(0,1)
+        plt.xticks(rotation=20, ha="right")
+        plt.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=8, title="Theme")
+        plt.tight_layout()
+        st.pyplot(fig2)
+
+        st.markdown("---")
+        st.subheader("Theme Dataframe")
+
+        def background_styling(styler):
+            styler.background_gradient(vmin=0, vmax=100, cmap='Reds')
+            styler.format('{:.2f}%')
+            return styler
+        
+        pivot_disp = (pivot*100).round(2)
+        #tdf_pivot = tdf.pivot(index='App', columns='Theme', values='percentReviews')
+        st.dataframe(pivot_disp
+                     #.reset_index()
+                     .style.pipe(background_styling)
+                     , use_container_width=True)
+
+        st.markdown("---")
+        st.subheader("Metadata")
+        display_meta = group_apps[[
+            "Title", "NumInstalls", 'NumReviews', "Score", "AdSupported", 'DateReleased', #"is_main"
+        ]].copy()
+        display_meta["NumInstalls"] = display_meta["NumInstalls"].apply(lambda x: f"{x:,}")
+        display_meta["NumReviews"] = display_meta["NumReviews"].apply(lambda x: f"{x:,}")
+        
+        display_meta["Score"] = (display_meta["Score"]
+                                 .apply(lambda x: f"{x:.2f}")
+                                 )
+        #we can add this ⭐
+        #display_meta = display_meta.rename(columns={"is_main": "Main App"})
+        st.dataframe(display_meta.reset_index(drop=True), use_container_width=True)

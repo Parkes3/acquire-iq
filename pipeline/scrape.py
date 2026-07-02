@@ -5,6 +5,8 @@ Fetches app metadata and reviews from Google Play Store.
 """
 
 import string
+import json
+import os
 import pandas as pd
 from google_play_scraper import app, search, reviews
 
@@ -79,3 +81,41 @@ def get_competitor_metadata(app_id: str, competitor_ids: list[str]) -> pd.DataFr
         rows.append(row)
     df = pd.DataFrame(rows).sort_values("NumInstalls", ascending=False)
     return df
+
+
+def save_competitor_group(
+    main_app_id: str,
+    competitor_ids: list[str],
+    output_dir: str,
+    ):
+    groups_path = f"{output_dir}/groups.json"
+
+    if os.path.exists(groups_path):
+        with open(groups_path) as f:
+            groups = json.load(f)
+    else:
+        groups = []
+
+    all_ids = [main_app_id] + competitor_ids
+
+    # Use genre as group name from saved metadata if available
+    meta_path = f"{output_dir}/{main_app_id.replace('.', '_')}_metadata.parquet"
+    if os.path.exists(meta_path):
+        meta = pd.read_parquet(meta_path).iloc[0]
+        group_name = meta.get("Genre", main_app_id)
+    else:
+        group_name = main_app_id
+
+    existing = next((g for g in groups if g["main_app_id"] == main_app_id), None)
+    if existing:
+        existing["app_ids"] = list(set(existing["app_ids"]) | set(all_ids))
+    else:
+        groups.append({
+            "main_app_id": main_app_id,
+            "app_ids": all_ids,
+        })
+
+    with open(groups_path, "w") as f:
+        json.dump(groups, f, indent=2)
+
+    print(f"Saved competitor group '{group_name}': {all_ids}")

@@ -16,7 +16,7 @@ from sentence_transformers import SentenceTransformer
 import anthropic
 
 from pipeline.config import EMBEDDING_MODEL_NAME, THEMES
-from pipeline.scrape import get_app_metadata, get_reviews, get_competitor_ids, parse_metadata
+from pipeline.scrape import get_app_metadata, get_reviews, get_competitor_ids, parse_metadata, save_competitor_group
 from pipeline.preprocess import filter_language, filter_reviews, to_text_list, build_stopwords
 from pipeline.model import run_topic_model
 from pipeline.themes import build_topic_table
@@ -176,14 +176,13 @@ def run_competitor_analysis(
     all_results = {}
     for aid in [app_id] + competitor_ids:
         try:
-            all_results[aid] = analyse_app(
-                aid, embedding_model, client,
+            all_results[aid] = analyse_app(aid, embedding_model, client,
                 output_dir=output_dir, verbose=verbose
             )
         except Exception as e:
             print(f"Failed to analyse {aid}: {e}")
             continue
-
+    save_competitor_group(app_id, competitor_ids, output_dir)
     return all_results
 
 
