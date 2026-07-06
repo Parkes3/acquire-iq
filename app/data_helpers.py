@@ -5,12 +5,13 @@ import streamlit as st
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "outputs")
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "sample")
+TIME_TO_LOAD = 3600
 
 def safe_id(app_id: str) -> str:
     return app_id.replace(".", "_")
 
 
-@st.cache_data
+@st.cache_data(ttl=TIME_TO_LOAD)
 def load_app_data(app_id: str) -> dict:
     """Load pre-computed parquet files for an app. Cached so reruns are instant."""
     sid = safe_id(app_id)
@@ -20,7 +21,7 @@ def load_app_data(app_id: str) -> dict:
         "review_df":    pd.read_parquet(f"{OUTPUT_DIR}/{sid}_reviews.parquet"),
     }
 
-@st.cache_data
+@st.cache_data(ttl=TIME_TO_LOAD)
 def load_groups(output_dir: str) -> list[dict]:
     groups_path = f"{output_dir}/groups.json"
     if not os.path.exists(groups_path):
@@ -28,7 +29,7 @@ def load_groups(output_dir: str) -> list[dict]:
     with open(groups_path) as f:
         return json.load(f)
 
-@st.cache_data
+@st.cache_data(ttl=TIME_TO_LOAD)
 def get_apps_in_group(main_app_id: str, output_dir: str) -> pd.DataFrame:
     """Load metadata for all apps in a named group."""
     groups = load_groups(output_dir)
