@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.lines import Line2D
 
-from app.styling import THEME_COLORS
+from styling import THEME_COLORS
 
 
 def plot_theme_bar(theme_table: pd.DataFrame):

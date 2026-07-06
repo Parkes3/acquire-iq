@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 
-from app.data_helpers import OUTPUT_DIR
+from data_helpers import OUTPUT_DIR
 
 def run_pipeline(app_id: str, progress_placeholder, status_placeholder) -> bool:
     """

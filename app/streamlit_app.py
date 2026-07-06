@@ -23,10 +23,10 @@ import seaborn as sns
 from PIL import Image
 from pathlib import Path
 
-from app.data_helpers import OUTPUT_DIR, load_app_data, load_groups, get_apps_in_group
-from app.styling import THEME_COLORS, HEATMAP_PALETTE
-from app.run_pipeline_app import run_pipeline
-from app.plotting_and_tables import plot_pareto, plot_theme_bar, process_theme_table, process_topic_table
+from data_helpers import OUTPUT_DIR, load_app_data, load_groups, get_apps_in_group
+from styling import THEME_COLORS, HEATMAP_PALETTE
+from run_pipeline_app import run_pipeline
+from plotting_and_tables import plot_pareto, plot_theme_bar, process_theme_table, process_topic_table
 
 # ---------------------------------------------------------------------------
 # Path setup — so pipeline modules are importable from app/
@@ -517,7 +517,7 @@ with tab4:
         st.markdown('---')
         st.subheader('Gap to Competitor Average')
         st.caption(f'Comparing {main_title} to competitors based on share of reviews by theme')
-        
+
         competitors = pivot_disp.loc[pivot_disp.index != main_title].mean()
         competitors.name = 'Competitor Average'
         comparison_frame = pd.concat([pivot_disp.loc[main_title], competitors], axis=1)
