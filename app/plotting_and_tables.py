@@ -77,7 +77,6 @@ def process_theme_table(theme_table, topic_table):
     top_topic_by_theme['High Priority Issue'] = top_topic_by_theme.apply(lambda x: f'{x['Impact']} {x['Claude']}  ({x['Severity']:.2f})', axis=1)
     
     display_theme = display_theme.join(top_topic_by_theme['High Priority Issue'])
-    display_theme = display_theme.sort_values(by='percentReviews', ascending=False)
     return display_theme
 
 def process_topic_table(topic_table, theme_filter):

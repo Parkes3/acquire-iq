@@ -295,6 +295,8 @@ with tab1:
     st.subheader("Theme breakdown")
 
     display_theme = process_theme_table(theme_table, topic_table)
+    
+    display_theme = display_theme.sort_values(by='percentReviews', ascending=False)
     st.dataframe(display_theme, use_container_width=True)
 
     st.markdown("---")
