@@ -18,12 +18,39 @@ from pipeline.config import (REVIEW_COUNT,
                              MAX_INSTALL_RATIO)
 
 
-def strip_title(title: str) -> str:
-    """Return the first word of an app title, stripped of punctuation.
-    e.g. 'Duolingo: Language Lessons' -> 'Duolingo'
+def extract_app_name(title: str, client=None) -> str:
     """
-    return title.split()[0].translate(str.maketrans("", "", string.punctuation))
+    Extract the core app name from a Google Play title.
+    Uses Claude if available, falls back to heuristics.
+    """
+    if client:
+        try:
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=20,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        f"Extract only the core app name from this Google Play title. "
+                        f"Return just the name, nothing else.\n\nTitle: {title}"
+                    )
+                }]
+            )
+            return response.content[0].text.strip()
+        except Exception:
+            pass  # fall through to heuristic
 
+    # Heuristic fallback — split on common separators and take first part
+    for sep in [" - ", ": ", " – ", " | "]:
+        if sep in title:
+            candidate = title.split(sep)[0].strip()
+            # Reject if it's clearly generic (starts with AI, Photo, Video etc.)
+            generic_starts = ["ai", "photo", "video", "free", "best", "my", "the"]
+            if candidate.lower().split()[0] not in generic_starts:
+                return candidate
+    
+    # Last resort — first word
+    return title.split()[0]
 
 def get_app_metadata(app_id: str) -> dict:
     """Fetch metadata for a single app from Google Play."""
@@ -31,10 +58,10 @@ def get_app_metadata(app_id: str) -> dict:
     return result
 
 
-def parse_metadata(result: dict) -> dict:
+def parse_metadata(result: dict, client=None) -> dict:
     """Extract the fields we actually need from a raw google-play-scraper result."""
     return {
-        "Title": strip_title(result.get("title", "Unknown")),
+        "Title": extract_app_name(result.get("title", "Unknown"), client=client),
         "FullTitle": result.get("title", "Unknown"),
         "Genre": result.get("genre", "Unknown"),
         "GenreId": result.get("genreId", "Unknown"),
@@ -48,6 +75,7 @@ def parse_metadata(result: dict) -> dict:
         "AdSupported": result.get("adSupported", False),
         "Price": result.get("price", 0),
         "ScoreHistogram": result.get("histogram", []),
+        "Icon": result.get('icon', None)
     }
 
 
@@ -55,13 +83,14 @@ def get_competitor_ids(
     result: dict,
     n: int = NUM_COMPETITORS,
     max_install_ratio: float = MAX_INSTALL_RATIO,
+    client=None
 ) -> list[str]:
     """
     Search for competitors based on app title.
     Excludes apps with installs more than max_install_ratio times
     larger than the main app — filters out dominant platform apps.
     """
-    title = strip_title(result["title"])
+    title = extract_app_name(result["title"], client=client)
     main_installs = result.get("realInstalls", 0) or 1  # avoid division by zero
 
     search_results = search(title)

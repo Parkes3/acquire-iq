@@ -123,7 +123,7 @@ def analyse_app(
     theme_table.to_parquet(f"{output_dir}/{safe_id}_themes.parquet")
     review_df_out.to_parquet(f"{output_dir}/{safe_id}_reviews.parquet")
 
-    metadata_df = pd.DataFrame([parse_metadata(metadata)])
+    metadata_df = pd.DataFrame([parse_metadata(metadata, client=client)])
     metadata_df["app_id"] = app_id
     metadata_df.to_parquet(f"{output_dir}/{safe_id}_metadata.parquet")
 

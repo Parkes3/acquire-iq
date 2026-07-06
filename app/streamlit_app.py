@@ -24,7 +24,7 @@ from PIL import Image
 from pathlib import Path
 
 from data_helpers import OUTPUT_DIR, load_app_data, load_groups, get_apps_in_group
-from styling import THEME_COLORS, HEATMAP_PALETTE
+from styling import THEME_COLORS, HEATMAP_PALETTE, APP_DESCRIPTION
 from run_pipeline_app import run_pipeline
 from plotting_and_tables import plot_pareto, plot_theme_bar, process_theme_table, process_topic_table
 
@@ -172,6 +172,15 @@ with st.sidebar:
                 active_app_id = group_apps.loc[
                     group_apps["Title"] == app_choice, "app_id"
                 ].values[0]
+            
+            if active_app_id:
+                sid = active_app_id.replace(".", "_")
+                meta_path = f"{OUTPUT_DIR}/{sid}_metadata.parquet"
+                if os.path.exists(meta_path):
+                    meta = pd.read_parquet(meta_path).iloc[0]
+                    icon_url = meta.get("Icon")
+                    if icon_url:
+                        st.image(icon_url, width=64)
 
     else:
         st.info("No groups found. Run the pipeline with --competitors first.")
@@ -224,10 +233,7 @@ if run_button and custom_input.strip():
 if active_app_id is None:
     with main_area:
         st.title("AcquireIQ")
-        st.markdown(
-            "Select a **competitor group** and **app** from the sidebar to explore results, "
-            "or enter a **custom app ID** to run the full analysis pipeline."
-        )
+        st.markdown(APP_DESCRIPTION)
         st.markdown("---")
 
         col1, col2 = st.columns(2)
@@ -268,8 +274,20 @@ app_display_name = group_apps.loc[
     group_apps['app_id'] == active_app_id, "Title"
     ].values[0] if active_app_id else active_app_id
 
-st.title(f"📊 {app_display_name}")
-st.caption(f"`{active_app_id}`")
+
+col_icon, col_title = st.columns([1, 8])
+with col_icon:
+    if icon_url:
+        st.image(icon_url, width=60)
+with col_title:
+    st.title(f"{app_display_name}")
+    st.caption(f"`{active_app_id}`")
+
+st.caption(
+    "Negative reviews analysed by topic and theme. "
+    "Use the tabs below to explore complaints by category, drill into individual topics, "
+    "browse raw reviews, or compare against competitors."
+)
 
 # ---------------------------------------------------------------------------
 # Tabs
@@ -295,7 +313,7 @@ with tab1:
     st.subheader("Theme breakdown")
 
     display_theme = process_theme_table(theme_table, topic_table)
-    
+
     display_theme = display_theme.sort_values(by='percentReviews', ascending=False)
     st.dataframe(display_theme, use_container_width=True)
 
@@ -417,10 +435,23 @@ with tab4:
         st.stop()
 
     # --- Installs ---
+    # Row of competitor icons above the installs chart
+    icon_cols = st.columns(len(group_apps))
+    for col, (_, app_row) in zip(icon_cols, group_apps.iterrows()):
+        sid = app_row["app_id"].replace(".", "_")
+        meta_path = f"{OUTPUT_DIR}/{sid}_metadata.parquet"
+        if os.path.exists(meta_path):
+            meta = pd.read_parquet(meta_path).iloc[0]
+            icon_url = meta.get("Icon")
+            with col:
+                if icon_url:
+                    st.image(icon_url, width=48)
+                st.caption(app_row["Title"])
     st.subheader("Installs")
     fig, ax = plt.subplots(figsize=(8, 4))
+# In competitor tab, replace is_main reference with active_app_id
     colours = [
-        "#E74C3C" if row["is_main"] else "#95A5A6"
+        "#E74C3C" if row["app_id"] == active_app_id else "#95A5A6"
         for _, row in group_apps.iterrows()
     ]
     group_apps = group_apps.sort_values(by='NumInstalls', ascending=False)
@@ -468,10 +499,12 @@ with tab4:
         )
 
         # Main app first
-        main_title = group_apps.loc[group_apps["is_main"], "Title"].values[0]
-        other_titles = [t for t in pivot.index if t != main_title]
-        if main_title in pivot.index:
-            pivot = pivot.loc[[main_title] + other_titles]
+        selected_title = group_apps.loc[
+            group_apps["app_id"] == active_app_id, "Title"
+        ].values[0]
+        other_titles = [t for t in pivot.index if t != selected_title]
+        if selected_title in pivot.index:
+            pivot = pivot.loc[[selected_title] + other_titles]
 
         fig2, ax2 = plt.subplots(figsize=(10, 5))
         pivot.plot(
@@ -497,12 +530,12 @@ with tab4:
             return styler
         
         def highlight_main_app(row):
-            if row.name == main_title:
+            if row.name == selected_title:
                 return ['font-weight: bold'] * len(row)
             return [''] * len(row)
         
         def highlight_index(idx):
-            if idx == main_title:
+            if idx == selected_title:
                 return 'font-weight: bold'
             return ''
         
@@ -518,12 +551,12 @@ with tab4:
 
         st.markdown('---')
         st.subheader('Gap to Competitor Average')
-        st.caption(f'Comparing {main_title} to competitors based on share of reviews by theme')
+        st.caption(f'Comparing {selected_title} to competitors based on share of reviews by theme')
 
-        competitors = pivot_disp.loc[pivot_disp.index != main_title].mean()
+        competitors = pivot_disp.loc[pivot_disp.index != selected_title].mean()
         competitors.name = 'Competitor Average'
-        comparison_frame = pd.concat([pivot_disp.loc[main_title], competitors], axis=1)
-        comparison_frame['Difference'] = comparison_frame[main_title] - comparison_frame['Competitor Average']
+        comparison_frame = pd.concat([pivot_disp.loc[selected_title], competitors], axis=1)
+        comparison_frame['Difference'] = comparison_frame[selected_title] - comparison_frame['Competitor Average']
         comparison_frame = comparison_frame.sort_values(by='Difference', ascending=False)
         
         #plotting bar

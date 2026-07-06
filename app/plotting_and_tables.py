@@ -74,9 +74,9 @@ def process_theme_table(theme_table, topic_table):
     top_topic_by_theme.loc[top_topic_by_theme['Severity'] > topic_table['Severity'].quantile(0.5), 'Impact'] = '🟠'
     top_topic_by_theme.loc[top_topic_by_theme['Severity'] > topic_table['Severity'].quantile(0.8), 'Impact'] = '🔴'
     
-    top_topic_by_theme['High Priority Issue'] = top_topic_by_theme.apply(lambda x: f'{x['Impact']} {x['Claude']}  ({x['Severity']:.2f})', axis=1)
+    top_topic_by_theme['High Priority Issue (Severity)'] = top_topic_by_theme.apply(lambda x: f'{x['Impact']} {x['Claude']}  ({x['Severity']:.2f})', axis=1)
     
-    display_theme = display_theme.join(top_topic_by_theme['High Priority Issue'])
+    display_theme = display_theme.join(top_topic_by_theme['High Priority Issue (Severity)'])
     return display_theme
 
 def process_topic_table(topic_table, theme_filter):

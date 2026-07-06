@@ -4,7 +4,7 @@ import json
 import streamlit as st
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "outputs")
-
+SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "sample")
 
 def safe_id(app_id: str) -> str:
     return app_id.replace(".", "_")
@@ -63,4 +63,21 @@ def get_apps_in_group(main_app_id: str, output_dir: str) -> pd.DataFrame:
             })
 
     return pd.DataFrame(rows).sort_values("NumInstalls", ascending=False).reset_index(drop=True)
+
+
+#TODO separate output dir and sample dir
+
+def find_app_data(app_id: str) -> str | None:
+    """
+    Return the directory containing data for an app.
+    Checks outputs first (user-generated), falls back to sample.
+    Returns None if not found in either location.
+
+    TO REPLACE OUTPUT_DIR
+    """
+    sid = app_id.replace(".", "_")
+    for directory in [OUTPUT_DIR, SAMPLE_DIR]:
+        if os.path.exists(f"{directory}/{sid}_themes.parquet"):
+            return directory
+    return None
 
