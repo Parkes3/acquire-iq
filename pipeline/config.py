@@ -30,6 +30,18 @@ GENRE_ACTIVITY_WORDS = {
     "DATING": ["date"],
 }
 
+# Competitor blocking (extremely large apps)
+COMPETITOR_BLOCKLIST = [
+    "com.google.android.apps.maps",
+    "com.google.android.gm",
+    "com.facebook.katana",
+    "com.instagram.android",
+    "com.whatsapp",
+    "com.youtube.android",
+    "com.amazon.mShop.android.shopping",
+]
+MAX_INSTALL_RATIO = 10.0 
+
 # Review filtering
 MIN_WORD_COUNT = 10
 MAX_SCORE = 3           # reviews with score <= this are treated as negative

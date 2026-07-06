@@ -55,5 +55,17 @@
       "com.google.android.apps.tachyon",
       "com.takimi.android"
     ]
+  },
+  {
+    "main_app_id": "com.bigwinepot.nwdn.international",
+    "app_ids": [
+      "com.bigwinepot.nwdn.international",
+      "photo.editor.photoeditor.filtersforpictures",
+      "com.perfectcorp.yce",
+      "com.scaleup.photofx",
+      "photo.editor.photoeditor.photoeditorpro",
+      "com.photoroom.app",
+      "io.faceapp"
+    ]
   }
 ]

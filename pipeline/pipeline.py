@@ -207,7 +207,7 @@ def run_competitor_analysis(
 #         token=args.hf_token,
 #     )
 
-#     # Anthropic client — reads ANTHROPIC_API_KEY from environment
+#     # Anthropic client — reads ANTHROPIC_- from environment
 #     client = anthropic.Anthropic()
 
 #     if args.competitors:

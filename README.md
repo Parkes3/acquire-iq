@@ -1,6 +1,6 @@
 # AcquireIQ
 
-Automated Google Play review topic modelling pipeline.
+Competitive intelligence platform for consumer mobile apps utilising an automated Google Play review topic modelling pipeline.
 Input an app ID, get structured topic and theme analysis of negative reviews.
 
 ## Project structure
@@ -60,6 +60,22 @@ streamlit run app/streamlit_app.py
 
 Loads all parquet files from `data/outputs/` automatically.
 
+## Deleting apps:
+
+To remove data for an app
+```bash
+# See all apps currently in outputs
+python delete_app.py --list
+
+# Delete a specific app (files + group entry)
+python delete_app.py --app_id com.duolingo
+
+# Remove from groups.json only, keep parquet files
+python delete_app.py --app_id com.duolingo --group_only
+
+# Nuclear option — wipe everything
+python delete_app.py --all
+```
 ## Configuration
 
 Edit `pipeline/config.py` to change:

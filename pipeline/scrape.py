@@ -10,7 +10,12 @@ import os
 import pandas as pd
 from google_play_scraper import app, search, reviews
 
-from pipeline.config import REVIEW_COUNT, REVIEW_LANG, REVIEW_COUNTRY, NUM_COMPETITORS
+from pipeline.config import (REVIEW_COUNT, 
+                             REVIEW_LANG, 
+                             REVIEW_COUNTRY, 
+                             NUM_COMPETITORS, 
+                             COMPETITOR_BLOCKLIST, 
+                             MAX_INSTALL_RATIO)
 
 
 def strip_title(title: str) -> str:
@@ -46,15 +51,51 @@ def parse_metadata(result: dict) -> dict:
     }
 
 
-def get_competitor_ids(result: dict, n: int = NUM_COMPETITORS) -> list[str]:
-    """Search for competitors based on the app title and return their app IDs."""
+def get_competitor_ids(
+    result: dict,
+    n: int = NUM_COMPETITORS,
+    max_install_ratio: float = MAX_INSTALL_RATIO,
+) -> list[str]:
+    """
+    Search for competitors based on app title.
+    Excludes apps with installs more than max_install_ratio times
+    larger than the main app — filters out dominant platform apps.
+    """
     title = strip_title(result["title"])
+    main_installs = result.get("realInstalls", 0) or 1  # avoid division by zero
+
     search_results = search(title)
-    return [
-        x["appId"]
-        for x in search_results[1 : n + 1]
-        if title.lower() not in x["appId"]
-    ]
+    competitor_ids = []
+
+    for x in search_results[1:]:  # skip first result (usually the main app itself)
+        if len(competitor_ids) >= n:
+            break
+
+        # Skip if it's clearly a different app than what we searched for
+        comp_app_id = x["appId"]
+
+        # Quick blocklist check before fetching metadata
+        if comp_app_id in COMPETITOR_BLOCKLIST:
+            print(f"  Skipping {comp_app_id} — blocklisted")
+            continue
+
+        # Fetch install count for the candidate
+        try:
+            comp_meta = app(comp_app_id)
+            comp_installs = comp_meta.get("realInstalls", 0) or 0
+        except Exception:
+            continue
+
+        ratio = comp_installs / main_installs if main_installs > 0 else float("inf")
+
+        if ratio > max_install_ratio:
+            print(f"  Skipping {comp_app_id} — {comp_installs:,} installs "
+                  f"({ratio:.0f}x larger than main app)")
+            continue
+
+        competitor_ids.append(comp_app_id)
+
+    return competitor_ids
 
 
 def get_reviews(app_id: str) -> pd.DataFrame:
