@@ -9,8 +9,7 @@ THEME_COLORS = {
     "Account Issues":   "#F72CC4",
 }
 
-APP_DESCRIPTION = """
-    **AcquireIQ** analyses negative reviews from Google Play to surface the issues that matter most to users.
+APP_DESCRIPTION = """**AcquireIQ** analyses negative reviews from Google Play to surface the issues that matter most to users.
 
     Select a main app from the sidebar to explore its results across Themes, Topics and Review Explorer, you can then select any app from the competitor group to drill on details:
 
