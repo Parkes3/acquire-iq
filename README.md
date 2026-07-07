@@ -3,6 +3,8 @@
 Competitive intelligence platform for consumer mobile apps utilising an automated Google Play review topic modelling pipeline.
 Input an app ID, get structured topic and theme analysis of negative reviews.
 
+Hosted on: https://acquire-iq.streamlit.app/
+
 ## Project structure
 
 ```
