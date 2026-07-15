@@ -31,13 +31,13 @@ def assign_themes(
 
     prompt = f"""Assign each topic to exactly one theme.
 
-Themes: {', '.join(themes)}
+    Themes: {', '.join(themes)}
 
-Topics:
-{labels_str}
+    Topics:
+    {labels_str}
 
-Return ONLY valid JSON:
-{{"assignments": [{{"topic_index": 0, "theme": "..."}}]}}"""
+    Return ONLY valid JSON:
+    {{"assignments": [{{"topic_index": 0, "theme": "..."}}]}}"""
 
     response = client.messages.create(
         model=model,

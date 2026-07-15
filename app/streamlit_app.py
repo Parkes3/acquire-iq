@@ -24,7 +24,7 @@ from PIL import Image
 from pathlib import Path
 
 from data_helpers import OUTPUT_DIR, load_app_data, load_groups, get_apps_in_group
-from styling import THEME_COLORS, HEATMAP_PALETTE, APP_DESCRIPTION
+from styling import THEME_COLORS, HEATMAP_PALETTE
 from run_pipeline_app import run_pipeline
 from plotting_and_tables import plot_pareto, plot_theme_bar, process_theme_table, process_topic_table
 
@@ -50,8 +50,27 @@ st.set_page_config(
 # Constants
 # ---------------------------------------------------------------------------
 
-#change to pathlib?
 PARETO_CUTOFF = 0.8
+
+# ---------------------------------------------------------------------------
+# App Descrtiption to display
+# ---------------------------------------------------------------------------
+
+APP_DESCRIPTION = """**AcquireIQ** analyses negative reviews from Google Play to surface the issues that matter most to users.
+
+    Select a main app from the sidebar to explore its results across Themes, Topics and Review Explorer, you can then select any app from the competitor group to drill on details:
+
+    - **Overview** — theme-level breakdown of negative reviews, showing which broad categories (Monetization, Technical Issues, etc.) account for the most complaints. Includes the top upvoted reviews per theme.
+
+    - **Topic Detail** — a Pareto chart of individual topics ordered by severity, combining review volume, thumbs up count, and low rating into a single signal. Use the cutoff slider to focus on the issues that drive the most negative sentiment. Drill into any topic to read its most upvoted reviews.
+
+    - **Review Explorer** — filter individual reviews by theme and topic. Useful for reading the exact language users use when describing a problem.
+
+    - **Competitor View** — compare theme distributions across the full competitor group. Shows install counts and the share of negative reviews by theme for each app, making it easy to spot where your app over- or under-indexes relative to competitors.
+
+    **WORK IN PROGRESS:**
+    You can run your own analysis by entering a Google Play appId
+    """
 
 
 # ---------------------------------------------------------------------------
